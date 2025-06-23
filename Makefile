@@ -1,7 +1,7 @@
 export GOBIN := $(PWD)/bin
 export PATH := $(GOBIN):$(PATH)
 
-GOLANGLINT_VERSION := 2.1.16
+GOLANGLINT_VERSION := 2.1.6
 
 .PHONY: default
 default: test
