@@ -35,7 +35,6 @@ func TestStorage(t *testing.T) {
 		t.Fatalf("failed to start dynamodb container: %v", err)
 	}
 	defer func() {
-		t.Logf("container terminated")
 		if err := testcontainers.TerminateContainer(ctr); err != nil {
 			t.Logf("failed to terminate container: %s", err)
 		}
