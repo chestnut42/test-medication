@@ -11,6 +11,6 @@ package model
 type Medication struct {
 	Id     string
 	Name   string
-	Dosage string
-	Form   string
+	Dosage string // It shall likely be a struct. See internal/medication/service.go for details
+	Form   string // It can be enum, but I'd prefer the business logic layer to validate it. Deep down the line enum shoud be a string in DB (not number)
 }
