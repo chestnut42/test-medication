@@ -2,14 +2,22 @@ package main
 
 import (
 	"context"
+	"errors"
+	"net/http"
 	"os"
+	"syscall"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"golang.org/x/sync/errgroup"
 
+	"github.com/chestnut42/test-medication/internal/medication"
 	"github.com/chestnut42/test-medication/internal/storage"
+	httpmedication "github.com/chestnut42/test-medication/internal/transport/http/medication"
+	"github.com/chestnut42/test-medication/internal/utils/httpx"
+	"github.com/chestnut42/test-medication/internal/utils/signalx"
 )
 
 func main() {
@@ -26,6 +34,28 @@ func main() {
 		MedicationTable: cfg.MedicationTable,
 	}, dyn)
 
+	medSvc := medication.NewService(store)
+
+	eg, ctx := errgroup.WithContext(ctx)
+	eg.Go(func() error {
+		// Running HTTP server
+		router := http.NewServeMux()
+		router.Handle("PUT /v1/medication/{id}", httpmedication.CreateMedication(medSvc))
+
+		return httpx.ServeContext(ctx, router, cfg.Listen)
+	})
+	eg.Go(func() error {
+		return signalx.ListenContext(ctx, syscall.SIGTERM, syscall.SIGINT)
+	})
+
+	if err := eg.Wait(); err != nil {
+		if errors.Is(err, signalx.ErrSignal) {
+			// TODO: TODOLOG
+		} else {
+			// TODO: TODOLOG
+			os.Exit(1)
+		}
+	}
 }
 
 func runDynamo(endpoint string, cfg aws.Config) *dynamodb.Client {

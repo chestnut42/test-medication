@@ -49,7 +49,7 @@ func NewService(store Storage) *Service {
 
 func (s *Service) CreateMedication(ctx context.Context, identity model.Identity, data model.MedicationData) (model.Medication, error) {
 	if identity.Owner == "" {
-		// It's not a BadInput. Caller of this function must be sure the owner is determined and is not empty.
+		// It's not a BadInput. Caller of this function must ensure the owner is determined and is not empty.
 		return model.Medication{}, errors.New("owner is required")
 	}
 
@@ -62,8 +62,6 @@ func (s *Service) CreateMedication(ctx context.Context, identity model.Identity,
 	}
 	if err := s.store.CreateMedication(ctx, storedMedication); err != nil {
 		if errors.Is(err, storage.ErrAlreadyExists) {
-			// TODO: ideally we should read existing object and return 200 if it's equal
-			// However if it's not an open API and we can allow weaker RESTful practices
 			return model.Medication{}, fmt.Errorf("medication %v already exists: %w", identity, ErrAlreadyExists)
 		}
 		return model.Medication{}, fmt.Errorf("creating medication: %w", err)
