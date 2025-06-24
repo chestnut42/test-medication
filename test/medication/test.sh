@@ -89,4 +89,14 @@ status=$(echo "$response" | tail -n1)
 check "status" "400" "$status"
 
 
+# Metrics
+response=$(curl -s -X GET "$base_url/metrics")
+
+if ! echo "$response" | grep "^go_memstats_" >/dev/null; then
+  echo "❌ No Go metrics found"
+fi
+if ! echo "$response" | grep "^http_server_duration_milliseconds_bucket" >/dev/null; then
+  echo "❌ No HTTP metrics found"
+fi
+
 echo "✅ All Good"

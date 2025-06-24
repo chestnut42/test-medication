@@ -8,6 +8,7 @@
 6. FRAMEWORK in general
 6. why httpx.Serve
 7. why logx context
+8. discuss URLs (as well as health and others)
 
 # TODOs
 
