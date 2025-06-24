@@ -22,6 +22,7 @@ function check {
 
 set +e
 
+
 # Create med for the first owner
 response=$(curl -s -w "\n%{http_code}" -X PUT "$base_url/v1/medication/myid1" \
   -H "X-Med-Owner: owner1" \
@@ -34,6 +35,7 @@ check "created name" "Paracetamol" $(echo "$body" | jq -r .name)
 check "created dosage" "500mg" $(echo "$body" | jq -r .dosage)
 check "created form" "tablet" $(echo "$body" | jq -r .form)
 
+
 # Try to create the same med for the same owner
 response=$(curl -s -w "\n%{http_code}" -X PUT "$base_url/v1/medication/myid1" \
   -H "X-Med-Owner: owner1" \
@@ -42,6 +44,7 @@ body=$(echo "$response" | head -n1)
 status=$(echo "$response" | tail -n1)
 
 check "status" "409" "$status"
+
 
 # Allows to create the same med for different owner
 response=$(curl -s -w "\n%{http_code}" -X PUT "$base_url/v1/medication/myid1" \
@@ -54,5 +57,36 @@ check "status" "200" "$status"
 check "created name" "Paracetamol" $(echo "$body" | jq -r .name)
 check "created dosage" "100mg" $(echo "$body" | jq -r .dosage)
 check "created form" "capsule" $(echo "$body" | jq -r .form)
+
+
+# Bad name
+response=$(curl -s -w "\n%{http_code}" -X PUT "$base_url/v1/medication/myid3" \
+  -H "X-Med-Owner: owner3" \
+  -d '{"dosage":"100mg", "form":"capsule"}')
+body=$(echo "$response" | head -n1)
+status=$(echo "$response" | tail -n1)
+
+check "status" "400" "$status"
+
+
+# Bad dosage
+response=$(curl -s -w "\n%{http_code}" -X PUT "$base_url/v1/medication/myid3" \
+  -H "X-Med-Owner: owner3" \
+  -d '{"name":"Paracetamol", "form":"capsule"}')
+body=$(echo "$response" | head -n1)
+status=$(echo "$response" | tail -n1)
+
+check "status" "400" "$status"
+
+
+# Bad form
+response=$(curl -s -w "\n%{http_code}" -X PUT "$base_url/v1/medication/myid3" \
+  -H "X-Med-Owner: owner3" \
+  -d '{"name":"Paracetamol", "dosage":"100mg", "form":"supersphere"}')
+body=$(echo "$response" | head -n1)
+status=$(echo "$response" | tail -n1)
+
+check "status" "400" "$status"
+
 
 echo "✅ All Good"

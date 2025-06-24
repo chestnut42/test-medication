@@ -66,7 +66,8 @@ func main() {
 		router.Handle("GET /health", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }))
 
 		logger.Info("running http server", slog.String("addr", cfg.Listen))
-		return httpx.ServeContext(ctx, router, cfg.Listen)
+		h := httpx.WithLogging(router)
+		return httpx.ServeContext(ctx, h, cfg.Listen)
 	})
 	eg.Go(func() error {
 		logger.Info("listening to os signals")
