@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"syscall"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -20,6 +21,8 @@ import (
 	"github.com/chestnut42/test-medication/internal/utils/signalx"
 )
 
+const dynamoPingTimeout = 10 * time.Second
+
 func main() {
 	ctx := context.Background()
 	cfg := MustNewConfig()
@@ -30,6 +33,10 @@ func main() {
 	}
 
 	dyn := runDynamo(cfg.DynamoEndpoint, awsCfg)
+	if err := pingTable(ctx, dyn, cfg.MedicationTable, dynamoPingTimeout); err != nil {
+		panic(err)
+	}
+
 	store := storage.NewService(storage.Config{
 		MedicationTable: cfg.MedicationTable,
 	}, dyn)
@@ -67,4 +74,21 @@ func runDynamo(endpoint string, cfg aws.Config) *dynamodb.Client {
 		o.BaseEndpoint = aws.String(endpoint)
 		o.Credentials = credentials.NewStaticCredentialsProvider("dummy", "dummy", "")
 	})
+}
+
+func pingTable(ctx context.Context, dyn *dynamodb.Client, table string, timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	for {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+
+		if _, err := dyn.DescribeTable(ctx, &dynamodb.DescribeTableInput{
+			TableName: aws.String(table),
+		}); err != nil {
+			// TODO: TODOLOG add log
+		}
+	}
 }
