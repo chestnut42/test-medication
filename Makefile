@@ -41,6 +41,12 @@ lint: ./bin/golangci-lint
 test:
 	go test -race $(GOFLAGS) -v ./... -count 1
 
+.PHONE: test-integrate
+test-integrate:
+	docker compose down
+	docker compose up --build -d
+	./test/medication/test.sh
+
 .PHONY: build
 build:
 	GOGC=off go build -v -o ./bin/medication ./cmd/medication

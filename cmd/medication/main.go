@@ -30,10 +30,10 @@ func main() {
 	cfg := MustNewConfig()
 
 	// logger setup
-	// TODO: read log level from config/env
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: cfg.LogLevel}))
 	ctx = logx.WithLogger(ctx, logger)
 
+	// Dependencies
 	awsCfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		logger.Error("loading aws config", slog.Any("error", err))
@@ -48,17 +48,22 @@ func main() {
 		panic(err)
 	}
 
+	// Services
 	store := storage.NewService(storage.Config{
 		MedicationTable: cfg.MedicationTable,
 	}, dyn)
-
 	medSvc := medication.NewService(store)
 
 	eg, ctx := errgroup.WithContext(ctx)
 	eg.Go(func() error {
 		// Running HTTP server
 		router := http.NewServeMux()
+
+		// Application
 		router.Handle("PUT /v1/medication/{id}", httpmedication.CreateMedication(medSvc))
+
+		// System
+		router.Handle("GET /health", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }))
 
 		logger.Info("running http server", slog.String("addr", cfg.Listen))
 		return httpx.ServeContext(ctx, router, cfg.Listen)

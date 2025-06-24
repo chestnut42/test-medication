@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/google/uuid"
+
 	"github.com/chestnut42/test-medication/internal/model"
 	"github.com/chestnut42/test-medication/internal/storage"
 )
@@ -44,6 +46,8 @@ type Service struct {
 func NewService(store Storage) *Service {
 	return &Service{
 		store: store,
+
+		newVersion: uuid.NewString,
 	}
 }
 

@@ -2,14 +2,16 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/kelseyhightower/envconfig"
 )
 
 type Config struct {
-	Listen          string `envconfig:"listen" default:":8080"`
-	DynamoEndpoint  string `envconfig:"dynamo_endpoint" default:""` // Must be empty to on AWS
-	MedicationTable string `envconfig:"medication_table" default:"medication"`
+	Listen          string     `envconfig:"listen" default:":8080"`
+	LogLevel        slog.Level `envconfig:"log_level" default:"debug"`
+	DynamoEndpoint  string     `envconfig:"dynamo_endpoint" default:""` // Must be empty to on AWS
+	MedicationTable string     `envconfig:"medication_table" default:"medication"`
 }
 
 func NewConfig() (Config, error) {
