@@ -24,6 +24,6 @@ func init() {
 	otel.SetMeterProvider(provider)
 }
 
-func MetricsHandler() http.Handler {
+func NewHandler() http.Handler {
 	return promhttp.HandlerFor(_gatherer, promhttp.HandlerOpts{})
 }
