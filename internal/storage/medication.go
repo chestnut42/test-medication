@@ -23,29 +23,34 @@ type wrappedMedication struct {
 	model.Medication
 }
 
-func wrap(m model.Medication) wrappedMedication {
-	// TODO: figure out sort key. Very likely these medications are going to be queried by client/person or
-	// partner/company + some pagination. Ideally we should figure out as much as possible at the start for form
-	// a proper SortKey.
-	// I put id as SortKey. Usually it helps to have SortKey even if you don't have one. Up to my knowledge:
-	// if later you will need to add SortKey you can just run over your data on the fly. If you don't have it
-	// on the schema - you'll have to re-create a table which can be a much bigger issue.
-	return wrappedMedication{
-		PartitionKey: m.Id,
-		SortKey:      m.Id,
-		Medication:   m,
-	}
+func getPartition(m model.Identity) string {
+	return m.Owner + "#" + m.Id // We can just concatenate here as it never leaves the implementation
+}
+
+// TODO: figure out sort key. Very likely these medications are going to be queried by client/person or
+// partner/company + some pagination. Ideally we should figure out as much as possible at the start for form
+// a proper SortKey.
+// I put id as SortKey. Usually it helps to have SortKey even if you don't have one. Up to my knowledge:
+// if later you will need to add SortKey you can just run over your data on the fly. If you don't have it
+// on the schema - you'll have to re-create a table which can be a much bigger issue.
+func getSortKey(m model.Identity) string {
+	return m.Id
 }
 
 func (s *Service) CreateMedication(ctx context.Context, medication model.Medication) error {
-	wrapped := wrap(medication)
+	wrapped := wrappedMedication{
+		PartitionKey: getPartition(medication.Identity),
+		SortKey:      getSortKey(medication.Identity),
+		Medication:   medication,
+	}
 
 	item, err := attributevalue.MarshalMap(wrapped)
 	if err != nil {
 		return fmt.Errorf("failed to marshal item: %w", err)
 	}
 
-	cond := expression.Name("Id").AttributeNotExists()
+	cond := expression.Name("PK").AttributeNotExists().
+		And(expression.Name("SK").AttributeNotExists())
 
 	expr, err := expression.NewBuilder().
 		WithCondition(cond).
@@ -68,4 +73,30 @@ func (s *Service) CreateMedication(ctx context.Context, medication model.Medicat
 		return fmt.Errorf("failed to put item: %w", err)
 	}
 	return nil
+}
+
+func (s *Service) GetMedication(ctx context.Context, identity model.Identity) (model.Medication, error) {
+	resp, err := s.database.GetItem(ctx, &dynamodb.GetItemInput{
+		TableName: aws.String(s.cfg.MedicationTable),
+		Key: map[string]types.AttributeValue{
+			"PK": &types.AttributeValueMemberS{Value: getPartition(identity)},
+			"SK": &types.AttributeValueMemberS{Value: getSortKey(identity)},
+		},
+	})
+	if err != nil {
+		var nfe *types.ResourceNotFoundException
+		if errors.As(err, &nfe) {
+			return model.Medication{}, fmt.Errorf("medication not found: %v, %w", identity, ErrNotFound)
+		}
+		return model.Medication{}, fmt.Errorf("failed to get item: %w", err)
+	}
+	if resp.Item == nil {
+		return model.Medication{}, fmt.Errorf("medication not found: %v, %w", identity, ErrNotFound)
+	}
+
+	var item wrappedMedication
+	if err = attributevalue.UnmarshalMap(resp.Item, &item); err != nil {
+		return model.Medication{}, fmt.Errorf("failed to unmarshal item: %w", err)
+	}
+	return item.Medication, nil
 }
