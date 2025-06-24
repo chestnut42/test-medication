@@ -20,6 +20,7 @@ import (
 	httpmedication "github.com/chestnut42/test-medication/internal/transport/http/medication"
 	"github.com/chestnut42/test-medication/internal/utils/httpx"
 	"github.com/chestnut42/test-medication/internal/utils/logx"
+	"github.com/chestnut42/test-medication/internal/utils/metrics"
 	"github.com/chestnut42/test-medication/internal/utils/signalx"
 )
 
@@ -64,10 +65,10 @@ func main() {
 
 		// System
 		router.Handle("GET /health", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }))
+		router.Handle("GET /metrics", metrics.MetricsHandler())
 
 		logger.Info("running http server", slog.String("addr", cfg.Listen))
-		h := httpx.WithLogging(router)
-		return httpx.ServeContext(ctx, h, cfg.Listen)
+		return httpx.ServeContext(ctx, router, cfg.Listen)
 	})
 	eg.Go(func() error {
 		logger.Info("listening to os signals")
