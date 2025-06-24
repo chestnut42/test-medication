@@ -3,8 +3,10 @@
 .github/
 bin/
 tools/
-Makefile
+.dockerignore
 .gitignore
 .golangci.yaml
+docker-compose.yaml
 README.md
 Dockerfile
+Makefile

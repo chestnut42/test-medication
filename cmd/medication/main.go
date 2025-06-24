@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"os"
 	"syscall"
@@ -18,6 +19,7 @@ import (
 	"github.com/chestnut42/test-medication/internal/storage"
 	httpmedication "github.com/chestnut42/test-medication/internal/transport/http/medication"
 	"github.com/chestnut42/test-medication/internal/utils/httpx"
+	"github.com/chestnut42/test-medication/internal/utils/logx"
 	"github.com/chestnut42/test-medication/internal/utils/signalx"
 )
 
@@ -27,13 +29,22 @@ func main() {
 	ctx := context.Background()
 	cfg := MustNewConfig()
 
+	// logger setup
+	// TODO: read log level from config/env
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	ctx = logx.WithLogger(ctx, logger)
+
 	awsCfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
+		logger.Error("loading aws config", slog.Any("error", err))
 		panic(err)
 	}
 
 	dyn := runDynamo(cfg.DynamoEndpoint, awsCfg)
 	if err := pingTable(ctx, dyn, cfg.MedicationTable, dynamoPingTimeout); err != nil {
+		logx.Logger(ctx).Error("ping table error",
+			slog.String("table", cfg.MedicationTable),
+			slog.Any("error", ctx.Err()))
 		panic(err)
 	}
 
@@ -49,17 +60,19 @@ func main() {
 		router := http.NewServeMux()
 		router.Handle("PUT /v1/medication/{id}", httpmedication.CreateMedication(medSvc))
 
+		logger.Info("running http server", slog.String("addr", cfg.Listen))
 		return httpx.ServeContext(ctx, router, cfg.Listen)
 	})
 	eg.Go(func() error {
+		logger.Info("listening to os signals")
 		return signalx.ListenContext(ctx, syscall.SIGTERM, syscall.SIGINT)
 	})
 
 	if err := eg.Wait(); err != nil {
 		if errors.Is(err, signalx.ErrSignal) {
-			// TODO: TODOLOG
+			logger.Info("signal received", slog.String("signal", err.Error()))
 		} else {
-			// TODO: TODOLOG
+			logger.Error("terminated with error", slog.String("error", err.Error()))
 			os.Exit(1)
 		}
 	}
@@ -81,14 +94,21 @@ func pingTable(ctx context.Context, dyn *dynamodb.Client, table string, timeout 
 	defer cancel()
 
 	for {
-		if ctx.Err() != nil {
-			return ctx.Err()
+		_, err := dyn.DescribeTable(ctx, &dynamodb.DescribeTableInput{
+			TableName: aws.String(table),
+		})
+		if err == nil {
+			return nil
 		}
 
-		if _, err := dyn.DescribeTable(ctx, &dynamodb.DescribeTableInput{
-			TableName: aws.String(table),
-		}); err != nil {
-			// TODO: TODOLOG add log
+		logx.Logger(ctx).Error("describe table error",
+			slog.String("table", table),
+			slog.Any("error", err))
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(time.Second):
 		}
 	}
 }

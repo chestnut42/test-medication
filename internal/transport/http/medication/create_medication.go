@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/chestnut42/test-medication/internal/medication"
 	"github.com/chestnut42/test-medication/internal/model"
+	"github.com/chestnut42/test-medication/internal/utils/logx"
 )
 
 type createMedicationService interface {
@@ -24,11 +26,14 @@ type createMedicationOutput struct {
 
 func CreateMedication(svc createMedicationService) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		logger := logx.Logger(r.Context())
+
 		id := r.PathValue("id")
 		if err := validateId(id); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+		logger = logger.With(slog.String("id", id))
 
 		var req medicationDataInput
 		if err := readJson(r, &req); err != nil {
@@ -44,12 +49,15 @@ func CreateMedication(svc createMedicationService) http.Handler {
 		}
 
 		owner := getOwner(r)
+		logger = logger.With(slog.String("owner", owner))
+
 		respObject, err := svc.CreateMedication(r.Context(), model.Identity{
 			Id:    id,
 			Owner: owner,
 		}, mData)
 		if err != nil {
-			// TODO: TODOLOG log error
+			logx.Logger(r.Context()).Error("svc.CreateMedication",
+				slog.Any("error", err))
 			if errors.Is(err, medication.ErrAlreadyExists) {
 				// TODO: ideally we should read existing object and return 200 if it's equal (+ even 201 for the first creation, but highly debatable)
 				// If it's an API for a partner, usually we can allow weaker RESTful contracts.
@@ -68,7 +76,7 @@ func CreateMedication(svc createMedicationService) http.Handler {
 			Dosage:  respObject.Dosage,
 			Form:    string(respObject.Form),
 		}); err != nil {
-			// TODO: TODOLOG log error
+			logx.Logger(r.Context()).Error("svc.CreateMedication")
 			return
 		}
 
