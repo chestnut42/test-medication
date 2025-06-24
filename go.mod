@@ -11,8 +11,10 @@ require (
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue v1.19.3
 	github.com/aws/aws-sdk-go-v2/feature/dynamodb/expression v1.7.85
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.43.4
+	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/testcontainers/testcontainers-go v0.37.0
 	github.com/testcontainers/testcontainers-go/modules/dynamodb v0.37.0
+	golang.org/x/sync v0.12.0
 )
 
 require (

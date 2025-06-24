@@ -61,6 +61,7 @@ func TestStorage(t *testing.T) {
 		test func(t *testing.T, ctx context.Context, service *Service)
 	}{
 		{name: "testStorage_Create", test: testStorageCreate},
+		{name: "testStorage_Get", test: testStorageGet},
 	}
 
 	for _, test := range tests {
@@ -98,36 +99,99 @@ func TestStorage(t *testing.T) {
 }
 
 func testStorageCreate(t *testing.T, ctx context.Context, service *Service) {
-	// Happy case
-	err := service.CreateMedication(ctx, model.Medication{
-		Id:     "some id",
-		Name:   "my name",
-		Dosage: "dosage 500mg",
-		Form:   "Plasma",
+	t.Run("happy create", func(t *testing.T) {
+		err := service.CreateMedication(ctx, model.Medication{
+			Identity: model.Identity{
+				Id:    "some id",
+				Owner: "owner",
+			},
+			MedicationData: model.MedicationData{
+				Name:   "my name",
+				Dosage: "dosage 500mg",
+				Form:   "Plasma",
+			},
+		})
+		if err != nil {
+			t.Fatalf("failed to create medication: %v", err)
+		}
 	})
+
+	t.Run("already exists", func(t *testing.T) {
+		err := service.CreateMedication(ctx, model.Medication{
+			Identity: model.Identity{
+				Id:    "some id", // the same id
+				Owner: "owner",
+			},
+			MedicationData: model.MedicationData{
+				Name:   "my other name",
+				Dosage: "other dosage 500mg",
+				Form:   "Liquid",
+			},
+		})
+		if !errors.Is(err, ErrAlreadyExists) {
+			t.Fatalf("creating medication with existing id: want: %v got: %v", ErrAlreadyExists, err)
+		}
+	})
+
+	// Okay to create the very same medication, but with the new id
+	t.Run("okay to create duplicate with different ID", func(t *testing.T) {
+		err := service.CreateMedication(ctx, model.Medication{
+			Identity: model.Identity{
+				Id:    "some id 2",
+				Owner: "owner",
+			},
+			MedicationData: model.MedicationData{
+				Name:   "my name",
+				Dosage: "dosage 500mg",
+				Form:   "Plasma",
+			},
+		})
+		if err != nil {
+			t.Fatalf("failed to create medication: %v", err)
+		}
+	})
+}
+
+func testStorageGet(t *testing.T, ctx context.Context, service *Service) {
+	expected := model.Medication{
+		Identity: model.Identity{
+			Id:    "42",
+			Owner: "owner",
+		},
+		MedicationData: model.MedicationData{
+			Name:   "my other name",
+			Dosage: "other dosage 500mg",
+			Form:   "Liquid",
+		},
+		Version: "some version",
+	}
+	err := service.CreateMedication(ctx, expected)
 	if err != nil {
 		t.Fatalf("failed to create medication: %v", err)
 	}
 
-	// Already exists case
-	err = service.CreateMedication(ctx, model.Medication{
-		Id:     "some id", // the same id
-		Name:   "my other name",
-		Dosage: "other dosage 500mg",
-		Form:   "Liquid",
+	t.Run("ok", func(t *testing.T) {
+		got, err := service.GetMedication(ctx, model.Identity{Id: "42", Owner: "owner"})
+		if err != nil {
+			t.Fatalf("failed to get medication: %v", err)
+		}
+		if got != expected {
+			t.Fatalf("got: %v, expected: %v", got, expected)
+		}
 	})
-	if !errors.Is(err, ErrAlreadyExists) {
-		t.Fatalf("creating medication with existing id: want: %v got: %v", ErrAlreadyExists, err)
-	}
 
-	// Okay to create the very same medication, but with new Id
-	err = service.CreateMedication(ctx, model.Medication{
-		Id:     "some id 2",
-		Name:   "my name",
-		Dosage: "dosage 500mg",
-		Form:   "Plasma",
+	t.Run("not found id", func(t *testing.T) {
+		gotMed, err := service.GetMedication(ctx, model.Identity{Id: "43", Owner: "owner"})
+		if !errors.Is(err, ErrNotFound) {
+			t.Logf("got med: %v", gotMed)
+			t.Fatalf("got error: %v, expected: %v", err, ErrNotFound)
+		}
 	})
-	if err != nil {
-		t.Fatalf("failed to create medication: %v", err)
-	}
+
+	t.Run("not found owner", func(t *testing.T) {
+		_, err = service.GetMedication(ctx, model.Identity{Id: "42", Owner: "owner2"})
+		if !errors.Is(err, ErrNotFound) {
+			t.Fatalf("got error: %v, expected: %v", err, ErrNotFound)
+		}
+	})
 }

@@ -1,0 +1,12 @@
+.idea/
+.git/
+.github/
+bin/
+tools/
+.dockerignore
+.gitignore
+.golangci.yaml
+docker-compose.yaml
+README.md
+Dockerfile
+Makefile
