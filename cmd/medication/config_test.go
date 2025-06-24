@@ -1,11 +1,13 @@
 package main
 
 import (
+	"log/slog"
 	"testing"
 )
 
 func TestConfig(t *testing.T) {
 	t.Setenv("MED_LISTEN", ":42")
+	t.Setenv("MED_LOG_LEVEL", "warn")
 	t.Setenv("MED_DYNAMO_ENDPOINT", "http://localhost:8000")
 	t.Setenv("MED_MEDICATION_TABLE", "my_table")
 
@@ -16,6 +18,9 @@ func TestConfig(t *testing.T) {
 
 	if c.Listen != ":42" {
 		t.Fatalf("invalid listen: %s", c.Listen)
+	}
+	if c.LogLevel != slog.LevelWarn {
+		t.Fatalf("invalid log level: %s", c.LogLevel)
 	}
 	if c.DynamoEndpoint != "http://localhost:8000" {
 		t.Fatalf("invalid endpoint: %s", c.DynamoEndpoint)
