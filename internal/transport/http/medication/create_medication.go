@@ -56,7 +56,7 @@ func CreateMedication(svc createMedicationService) http.Handler {
 			Owner: owner,
 		}, mData)
 		if err != nil {
-			logx.Logger(r.Context()).Error("svc.CreateMedication",
+			logger.Error("svc.CreateMedication",
 				slog.Any("error", err))
 			if errors.Is(err, medication.ErrAlreadyExists) {
 				// TODO: ideally we should read existing object and return 200 if it's equal (+ even 201 for the first creation, but highly debatable)
@@ -76,11 +76,10 @@ func CreateMedication(svc createMedicationService) http.Handler {
 			Dosage:  respObject.Dosage,
 			Form:    string(respObject.Form),
 		}); err != nil {
-			logx.Logger(r.Context()).Error("svc.CreateMedication")
+			logger.Error("svc.CreateMedication")
 			return
 		}
 
 		// OK
-		return
 	})
 }

@@ -42,7 +42,7 @@ func ParseForm(form string) (Form, bool) {
 		if string(f) == form {
 			return f, true
 		}
-		if strings.ToLower(strings.TrimSpace(form)) == strings.ToLower(string(f)) {
+		if strings.EqualFold(strings.TrimSpace(form), string(f)) {
 			return f, true
 		}
 	}
