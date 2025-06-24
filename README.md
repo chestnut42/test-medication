@@ -8,3 +8,7 @@
 6. why httpx.Serve
 
 # TODOs
+
+1. Authorisation
+2. Swagger
+3. 

@@ -1,0 +1,10 @@
+.idea/
+.git/
+.github/
+bin/
+tools/
+Makefile
+.gitignore
+.golangci.yaml
+README.md
+Dockerfile
