@@ -62,6 +62,9 @@ func main() {
 
 		// Application
 		router.Handle("PUT /v1/medication/{id}", httpmedication.CreateMedication(medSvc))
+		router.Handle("PATCH /v1/medication/{id}", httpmedication.UpdateMedication(medSvc))
+		router.Handle("DELETE /v1/medication/{id}", httpmedication.DeleteMedication(medSvc))
+		router.Handle("GET /v1/medication/{id}", httpmedication.GetMedication(medSvc))
 
 		// System
 		router.Handle("GET /health", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }))
