@@ -94,9 +94,31 @@ func (s *Service) GetMedication(ctx context.Context, identity model.Identity) (m
 		return model.Medication{}, fmt.Errorf("medication not found: %v, %w", identity, ErrNotFound)
 	}
 
+	// TODO: also return NotFound if the object is marked as DELETED
+
 	var item wrappedMedication
 	if err = attributevalue.UnmarshalMap(resp.Item, &item); err != nil {
 		return model.Medication{}, fmt.Errorf("failed to unmarshal item: %w", err)
 	}
 	return item.Medication, nil
+}
+
+func (s *Service) UpdateMedication(ctx context.Context, oldVersion string, medication model.Medication) (model.Medication, error) {
+	// TODO: implement me
+	// The operation must succeed ONLY if the old version is equal to one in DB
+	// Roughly we can just PutItem with a condition to overwrite the whole object conditionally.
+	// Once the logic become more sophisticate we can move to UpdateItem certain fields
+	//
+	// Ideally we should save each updated snapshot in a logging table. It will cost money, but saves a ton of time
+	// on issue resolution. If money isn't a concern here (95% it is not) we should do so.
+	return model.Medication{}, errors.New("not implemented")
+}
+
+func (s *Service) DeleteMedication(ctx context.Context, identity model.Identity) error {
+	// TODO: implement me
+	// Ideally we should just mark the object as DELETED and leave it as is. Unless:
+	// a) We must conform some GDPR and must delete the data
+	// b) The caller wants to create new object with the same id -> we can save deleted object in log table and delete from the
+	// main table.
+	return errors.New("not implemented")
 }
